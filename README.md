@@ -1,64 +1,47 @@
 # hyprsplit
-awesome / dwm like workspaces for [hyprland](https://github.com/hyprwm/hyprland)
+awesome / dwm like workspaces for [hyprland](https://github.com/hyprwm/hyprland) implemented as a lua library to be used from your hyprland config
 
-A complete rewrite of [split-monitor-workspaces](https://github.com/Duckonaut/split-monitor-workspaces) that attempts to fix the issues I experienced with it. Improvements include:
-- Workspaces on each monitor are determined by that monitor's ID
-- Ability to grab windows that get lost in invalid workspaces when disconnecting monitors
-- Dispatcher to swap all windows in active workspaces between two monitors
-- Better handling of workspace params. For example `empty` will work properly and select an empty workspace on the current monitor.
+> [!IMPORTANT]
+> The c++ plugin is deprecated and will be replaced by the lua version.
+> 
+> The  original readme for the plugin is [here](https://github.com/shezdy/hyprsplit/blob/legacy/README.md)
 
 ## Installation
-Requires Hyprland version >=`v0.36.0`
-
-### Hyprpm
-Load plugins on startup by putting exec-once = hyprpm reload -n in your hyprland config.
-```
-hyprpm update
-hyprpm add https://github.com/shezdy/hyprsplit
-hyprpm enable hyprsplit
-```
+Requires Hyprland version >=`v0.55.0`
 
 ### Manual
-Make sure you have the Hyprland headers installed (see [hyprland wiki](https://wiki.hyprland.org/Plugins/Using-Plugins/#manual))
+Clone the repo somewhere, the easiest spot might be in your `.config/hypr` directory.
 
-If you are compiling for a numbered version of Hyprland, check for a commit pin in hyprpm.toml, and reset the plugin to the second hash in the pair.
-
-Compile the plugin:
+```lua
+local hs = require("hyprsplit") -- you might have to change this depending on where "hyprsplit/init.lua" is located
 ```
-make all
-```
-Finally add the following to your config  `plugin = /path/to/hyprsplit/hyprsplit.so`, or run `hyprctl plugin load /path/to/hyprsplit/hyprsplit.so`
 
-## Configuration
+## Usage
+> [!NOTE]
+> The lua library is new, you might run into bugs.
+
+The library is structured similarly to the hyprland config library `hl`
+
+Set config options using `hs.config()`
+
+Get a config option using `hs.get_config()`
+
 ### Options
 
 | name | description | type | default |
 |---|---|---|---|
 | num_workspaces | Number of workspaces on each monitor | int | 10 |
 | persistent_workspaces | if true, will make workspaces on each monitor persistent (they will always exist and will not be destroyed when empty) | bool | false |
-| force_monitor_priority | if true, the plugin will auto assign workspaces using monitor names in alphabetical order, even when there are no monitor_priorities defined in the config. if false, the plugin will automatically assign workspaces based on monitor id as long as no `monitor_priority keywords are used in the config | bool | false |
-
-### Keywords
-
-| name | description | arguments |
-|---|---|---|
-| monitor_priority | reserves workspaces in order for the listed monitors | comma separated list of monitors, i.e. `DP-1, desc:foobar` |
-
-`monitor_priority` example with `num_workspaces=10` and `plugin:hyprsplit:monitor_priority=HDMI-A-1, DP-1`: monitor HDMI-A-1 will have workspace ids 1-10 reserved for it, DP-1 11-20.
-
-### How workspaces are assigned to monitors
-By default with no config monitor ids will be used to determine the workspaces on each monitor. 
-
-If `force_monitor_priority` is set to true OR if the `monitor_priority` keyword is used in the config, monitors will automatically be assigned workspaces based on the alphabetical order of their names (instead of monitor ids). For example if force_monitor_priority=true, `DP-1` would get lower workspaces ids than `HDMI-A-1`, regardless of monitor ids.
+| force_monitor_priority | if true, will auto assign workspaces using monitor names in alphabetical order, even when there are no monitor_priorities defined in the config. if false, will automatically assign workspaces based on monitor id as long as no `monitor_priority keywords are used in the config | bool | false |
 
 ### Dispatchers
-| Dispatcher | Description | Params |
-| ---------- | ----------- | ------ |
-| split:workspace | Replacement for `workspace` | workspace |
-| split:movetoworkspace | Replacement for `movetoworkspace` | workspace OR `workspace,window` for a specific window  |
-| split:movetoworkspacesilent | Replacement for `movetoworkspacesilent` | workspace OR `workspace,window` for a specific window |
-| split:swapactiveworkspaces | Swaps all windows in active workspaces between two monitors | two monitors separated by a space |
-| split:grabroguewindows | Finds all windows that are in invalid workspaces and moves them to the current workspace. Useful when unplugging monitors. | none |
+hs.dsp contains:
+| Dispatcher | Description |
+| ---------- | ----------- |
+| `focus({ workspace })` | Replacement for `hl.dsp.focus({ workspace })`. focus a workspace on the current monitor |
+| `window.move({ workspace, follow? })` | Replacement for `hl.dsp.window.move({ workspace, follow? })`. move a window to a workspace on the current monitor |
+| `workspace.swap_monitors({ monitor1, monitor2 })` | Swaps all windows in active workspaces between two monitors. Does not preserve layout, just moves the windows |
+| `grab_rogue_windows` | Finds all windows that are in invalid workspaces and moves them to the current workspace. Useful when unplugging monitors. |
 
 Some of Hyprland's workspace parameters are treated differently by the plugin's dispatchers:
 -  `1`,`2`, or `3`: number on current monitor
@@ -70,36 +53,26 @@ Some of Hyprland's workspace parameters are treated differently by the plugin's 
 
 All other workspace params will be treated the same as however Hyprland normally treats them.
 
-If you are using hy3 you should use `hy3:movetoworkspace` instead of `split:movetoworkspace`, it has compatibility with hyprsplit.
+### How workspaces are assigned to monitors
+By default with no config, monitor ids will be used to determine the workspaces on each monitor.
+
+`hs.monitor_priority()` can be called to reserve workspaces in order for the listed monitors.
+
+If `force_monitor_priority` is set to true OR if the `monitor_priority` function is called in the config, monitors will automatically be assigned workspaces based on the alphabetical order of their names (instead of monitor ids). For example if force_monitor_priority=true, `DP-1` would get lower workspaces ids than `HDMI-A-1`, regardless of monitor ids.
+
+### Extras
+Take a look in the lua code. Not everything is documented yet but if you want to script something extra there are some functions that may be useful.
 
 ### Example Config
 ```
-plugin {
-    hyprsplit {
-        num_workspaces = 6
-    }
-}
+local hs = require("hyprsplit")
+hs.config({ num_workspaces = 6 })
+for i = 1, 6 do
+    hl.bind("SUPER + " .. i, hs.dsp.focus({ workspace = i }))
+    hl.bind("SUPER + SHIFT + " .. i, hs.dsp.window.move({ workspace = i, follow = false }))
+end
 
-bind = SUPER, 1, split:workspace, 1
-bind = SUPER, 2, split:workspace, 2
-bind = SUPER, 3, split:workspace, 3
-bind = SUPER, 4, split:workspace, 4
-bind = SUPER, 5, split:workspace, 5
-bind = SUPER, 6, split:workspace, 6
-
-bind = SUPER SHIFT, 1, split:movetoworkspacesilent, 1
-bind = SUPER SHIFT, 2, split:movetoworkspacesilent, 2
-bind = SUPER SHIFT, 3, split:movetoworkspacesilent, 3
-bind = SUPER SHIFT, 4, split:movetoworkspacesilent, 4
-bind = SUPER SHIFT, 5, split:movetoworkspacesilent, 5
-bind = SUPER SHIFT, 6, split:movetoworkspacesilent, 6
-
-bind = SUPER, D, split:swapactiveworkspaces, current +1
-bind = SUPER, G, split:grabroguewindows
-
-# Only bind if hyprsplit plugin is loaded, requires Hyprland >= v0.51.0
-# hyprlang if HYPRSPLIT
-bind = SUPER CONTROL, 1, split:movetoworkspace, 1
-# hyprlang endif
+hl.bind("SUPER + " .. "g", hs.dsp.grab_rogue_windows())
+hl.bind("SUPER + " .. "d", hs.dsp.workspace.swap_monitors({ monitor1 = "current", monitor2 = "+1" }))
 
 ```
