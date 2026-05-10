@@ -100,61 +100,94 @@ function MonitorRange:contains(num)
 end
 hyprsplit.MonitorRange = MonitorRange
 
----@param workspace string
+---@param workspace_str string
 ---@return string
-function hyprsplit.get_workspace_string(workspace)
+function hyprsplit.get_workspace_string(workspace_str)
     local ws_id = 1
     local num_workspaces = hyprsplit._config.num_workspaces
-    local monitor = hl.get_active_monitor()
+    local active_monitor = hl.get_active_monitor()
 
-    if monitor == nil or monitor.active_workspace == nil then
+    if active_monitor == nil or active_monitor.active_workspace == nil then
         log("missing monitor/active_active workspace in get_workspace?")
         return "0"
     end
-    local range = MonitorRange:new(monitor)
+    local range = MonitorRange:new(active_monitor)
 
-    local workspace_int = math.tointeger(workspace)
-    if workspace[0] == "+" or workspace[0] == "-" then
+    local workspace_int = math.tointeger(workspace_str)
+    if workspace_str:sub(1, 1) == "+" or workspace_str:sub(1, 1) == "-" then
         if workspace_int == nil then
-            return tostring(monitor.active_workspace.id)
+            return tostring(active_monitor.active_workspace.id)
         end
 
-        local local_current = monitor.active_workspace.id - range.min + 1
+        local local_current = active_monitor.active_workspace.id - range.min + 1
         ws_id = local_current + workspace_int
 
         ws_id = math.max(ws_id, 1)
         ws_id = math.min(ws_id, num_workspaces)
     elseif workspace_int ~= nil then
         ws_id = math.max(workspace_int, 1)
-    elseif workspace[0] == "r" and (workspace[1] == "-" or workspace[1] == "+") then
-        local plusminus_num = math.tointeger(workspace:sub(1))
+    elseif
+        workspace_str:sub(1, 1) == "r"
+        and (workspace_str:sub(2, 2) == "-" or workspace_str:sub(2, 2) == "+")
+    then
+        local plusminus_num = math.tointeger(workspace_str:sub(2))
         if plusminus_num == nil then
-            return tostring(monitor.active_workspace.id)
+            return tostring(active_monitor.active_workspace.id)
         end
 
-        ws_id = monitor.active_workspace.id + plusminus_num
+        ws_id = active_monitor.active_workspace.id + plusminus_num
 
         if ws_id <= 0 then
             ws_id = ((((ws_id - 1) % num_workspaces) + num_workspaces) % num_workspaces) + 1
         end
-    elseif workspace[0] == "e" and (workspace[1] == "-" or workspace[1] == "+") then
-        local plusminus_num = math.tointeger(workspace:sub(1))
+    elseif
+        workspace_str:sub(1, 1) == "e"
+        and (workspace_str:sub(2, 2) == "-" or workspace_str:sub(2, 2) == "+")
+    then
+        local plusminus_num = math.tointeger(workspace_str:sub(2))
         if plusminus_num == nil then
-            return tostring(monitor.active_workspace.id)
+            return tostring(active_monitor.active_workspace.id)
         end
-    -- TODO
-    elseif workspace == "empty" then
+
+        local valid_workspaces = {}
+        for _, ws in ipairs(hl.get_workspaces()) do
+            if range:contains(ws.id) then
+                table.insert(valid_workspaces, ws)
+            end
+        end
+
+        local active_ws_index = -1
+        for index, ws in ipairs(valid_workspaces) do
+            if ws.active then
+                active_ws_index = index
+            end
+        end
+        if active_ws_index == -1 then
+            return tostring(active_monitor.active_workspace.id)
+        end
+
+        local result_index = active_ws_index + plusminus_num
+        if result_index < 1 then
+            result_index = 1
+        elseif result_index > #valid_workspaces then
+            result_index = #valid_workspaces
+        end
+
+        return tostring(valid_workspaces[result_index].id)
+    elseif workspace_str == "empty" then
         for i = range.min, range.max do
             local ws = hl.get_workspace(i)
             if ws == nil or ws.windows == 0 then
-                return tostring(ws)
+                notify_error("empty %d", i)
+                return tostring(i)
             end
-
-            log("no empty workspace on monitor")
-            return tostring(monitor.active_workspace.id)
         end
+
+        log("no empty workspace on monitor")
+        return tostring(active_monitor.active_workspace.id)
     else
-        return tostring(monitor.active_workspace.id)
+        -- no change
+        return workspace_str
     end
 
     if ws_id > num_workspaces then
