@@ -198,9 +198,10 @@ function hyprsplit.get_workspace_string(workspace_str)
 end
 
 ---@param args table args.workspace is required, it will be converted to string using tostring()
+---@return function
 function hyprsplit.dsp.focus(args)
     if args.workspace == nil then
-        notify_error("dsp.focus args.workspace is nil")
+        notify_error("dsp.focus: args.workspace is nil")
         return function() end
     end
     local workspace_arg = tostring(args.workspace)
@@ -226,13 +227,17 @@ function hyprsplit.dsp.focus(args)
                 on_current_monitor = true,
             }))
         end
+    else
+        notify_error("dsp.focus: failed to convert args.workspace to string")
+        return function() end
     end
 end
 
 ---@param args table args.workspace is required, it will be converted to string using tostring()
+---@return function
 function hyprsplit.dsp.window.move(args)
     if args.workspace == nil then
-        notify_error("dsp.window.move args.workspace is nil")
+        notify_error("dsp.window.move: args.workspace is nil")
         return function() end
     end
     local workspace = tostring(args.workspace)
@@ -241,10 +246,14 @@ function hyprsplit.dsp.window.move(args)
             args.workspace = hyprsplit.get_workspace_string(workspace)
             hl.dispatch(hl.dsp.window.move(args))
         end
+    else
+        notify_error("dsp.window.move: failed to convert args.workspace to string")
+        return function() end
     end
 end
 
 ---@param args table args.monitor1 and args.monitor2 are required as strings
+---@return function
 function hyprsplit.dsp.workspace.swap_monitors(args)
     if not type(args.monitor1) == "string" or not type(args.monitor2) == "string" then
         return function()
@@ -415,6 +424,7 @@ function hyprsplit.get_config(key)
     return hyprsplit._config[key]
 end
 
+---@param priority table array of monitor strings
 function hyprsplit.monitor_priority(priority)
     for _, monitor in ipairs(priority) do
         if type(monitor) == "string" then
