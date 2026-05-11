@@ -56,15 +56,17 @@ All other workspace params will be treated the same as however Hyprland normally
 ### How workspaces are assigned to monitors
 By default with no config, monitor ids will be used to determine the workspaces on each monitor.
 
-`hs.monitor_priority()` can be called to reserve workspaces in order for the listed monitors.
+`hs.monitor_priority()` can be called to reserve workspaces in order for the listed monitors. Monitor name or description can be used.
 
-If `force_monitor_priority` is set to true OR if the `monitor_priority` function is called in the config, monitors will automatically be assigned workspaces based on the alphabetical order of their names (instead of monitor ids). For example if force_monitor_priority=true, `DP-1` would get lower workspaces ids than `HDMI-A-1`, regardless of monitor ids.
+For example `hs.monitor_priority({"HDMI-A-1", "DP-1"})` with `num_workspaces = 10` will reserve workspaces 1-10 for monitor `HDMI-A-1`, 11-20 for `DP-1`, and additional monitors will be automatically assigned workspaces.
+
+If `force_monitor_priority` is set to true OR if the `monitor_priority` function is called in the config, monitors not explicitly defined in monitor_priority will automatically be assigned workspace priorities based on the alphabetical order of their names (instead of monitor ids). For example if force_monitor_priority=true, `DP-1` would get lower workspaces ids than `HDMI-A-1`, regardless of monitor ids.
 
 ### Extras
 Take a look in the lua code. Not everything is documented yet but if you want to script something extra there are some functions that may be useful.
 
 ### Example Config
-```
+```lua
 local hs = require("hyprsplit")
 hs.config({ num_workspaces = 6 })
 for i = 1, 6 do
