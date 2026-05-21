@@ -209,16 +209,32 @@ function hyprsplit.dsp.focus(args)
         return function()
             local ws_string = hyprsplit.get_workspace_string(workspace_arg)
             local ws = hl.get_workspace(ws_string)
+            local active_monitor = hl.get_active_monitor()
             -- if workspace exists, check that it is on the correct monitor.
             -- if not on the correct monitor just recheck all workspaces
-            if ws then
-                local active_monitor = hl.get_active_monitor()
-                if active_monitor then
-                    local range = MonitorRange:new(active_monitor)
-                    if ws.monitor.id ~= active_monitor.id and range:contains(ws.id) then
-                        log("workspace exists but is on the wrong monitor")
-                        hyprsplit.ensure_good_workspaces()
-                    end
+            if ws and active_monitor then
+                local range = MonitorRange:new(active_monitor)
+                if ws.monitor.id ~= active_monitor.id and range:contains(ws.id) then
+                    log("workspace exists but is on the wrong monitor")
+                    hyprsplit.ensure_good_workspaces()
+                end
+            end
+
+            -- check for workspace_back_and_forth
+            if
+                hl.get_config("binds.workspace_back_and_forth")
+                and active_monitor
+                and active_monitor.active_workspace
+            then
+                local target_ws_id = math.tointeger(ws_string)
+                if target_ws_id == active_monitor.active_workspace.id then
+                    -- this could still break in some (probably very unlikely) edge cases
+                    -- add proper previous workspace tracking if it becomes a major issue
+                    log("dsp.focus: workspace_back_and_forth using previous_per_monitor")
+                    hl.dispatch(hl.dsp.focus({
+                        workspace = "previous_per_monitor",
+                    }))
+                    return
                 end
             end
 
