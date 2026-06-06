@@ -70,7 +70,7 @@ hs.dsp contains:
 | `focus({ workspace })` | Replacement for `hl.dsp.focus({ workspace })`. focus a workspace on the current monitor |
 | `window.move({ workspace, follow? })` | Replacement for `hl.dsp.window.move({ workspace, follow? })`. move a window to a workspace on the current monitor |
 | `workspace.swap_monitors({ monitor1, monitor2 })` | Swaps all windows in active workspaces between two monitors. Does not preserve layout, just moves the windows |
-| `grab_rogue_windows` | Finds all windows that are in invalid workspaces and moves them to the current workspace. Useful when unplugging monitors. |
+| `grab_rogue_windows()` | Finds all windows that are in invalid workspaces and moves them to the current workspace. Useful when unplugging monitors. |
 
 Some of Hyprland's workspace parameters are treated differently by the plugin's dispatchers:
 -  `1`,`2`, or `3`: number on current monitor
@@ -97,28 +97,14 @@ Take a look in the lua code. Not everything is documented yet but if you want to
 ### Example Config
 ```lua
 local hs = require("hyprsplit")
-hs.config({ num_workspaces = 6 })
-for i = 1, 6 do
-    hl.bind("SUPER + " .. i, hs.dsp.focus({ workspace = i }))
-    hl.bind("SUPER + SHIFT + " .. i, hs.dsp.window.move({ workspace = i, follow = false }))
-end
-
-hl.bind("SUPER + " .. "g", hs.dsp.grab_rogue_windows())
-hl.bind("SUPER + " .. "d", hs.dsp.workspace.swap_monitors({ monitor1 = "current", monitor2 = "+1" }))
-
-```
-### For 10 workspaces
-```lua
-local hs = require("hyprsplit")
 hs.config({ num_workspaces = 10 })
--- Since key 10 is invalid, we map it to 0 instead
 for i = 1, 10 do
-    local key = (i == 10) and "0" or i
-
+    local key = i % 10 -- 10 maps to key 0
     hl.bind("SUPER + " .. key, hs.dsp.focus({ workspace = i }))
     hl.bind("SUPER + SHIFT + " .. key, hs.dsp.window.move({ workspace = i, follow = false }))
 end
 
 hl.bind("SUPER + " .. "g", hs.dsp.grab_rogue_windows())
 hl.bind("SUPER + " .. "d", hs.dsp.workspace.swap_monitors({ monitor1 = "current", monitor2 = "+1" }))
+
 ```
